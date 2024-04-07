@@ -1,0 +1,8 @@
+black
+isort
+pylint
+click
+pytest
+docker
+jupyter
+pandas
