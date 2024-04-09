@@ -6,7 +6,7 @@ test:
 	python -m pytest -vv test_*.py
 
 format:	
-	isort *.py && black *.py
+	terraform fmt
 
 lint:
 	pylint --disable=R,C --ignore-patterns=test_.*?py *.py 
