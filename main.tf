@@ -1,57 +1,64 @@
-# Configure the Azure provider
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "3.98.0"
+    }
+  }
+}
+
 provider "azurerm" {
   features {}
 }
 
-# Create a resource group
-resource "azurerm_resource_group" "example" {
-  name     = "example-resources"
-  location = "West Europe"
+data "azurerm_client_config" "current" {}
+
+data "azurerm_resource_group" "uma_rg" {
+  name = "uma-rg-engineering-dev"
 }
 
-# Create an Azure KeyVault
-resource "azurerm_key_vault" "example" {
-  name                = "examplekeyvault"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
+resource "azurerm_storage_account" "uma_sa" {
+  name                     = "umasanbtestdeploy001"
+  resource_group_name      = data.azurerm_resource_group.uma_rg.name
+  location                 = data.azurerm_resource_group.uma_rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+resource "azurerm_key_vault" "uma_kv" {
+  name                = "umakvnbtestdeploy001"
+  location            = data.azurerm_resource_group.uma_rg.location
+  resource_group_name = data.azurerm_resource_group.uma_rg.name
   tenant_id           = data.azurerm_client_config.current.tenant_id
+  sku_name            = "standard"
 
-  sku_name = "standard"
-}
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = data.azurerm_client_config.current.object_id
 
-# Create an Azure Data Lake Store
-resource "azurerm_data_lake_store" "example" {
-  name                = "exampledatalakestore"
-  resource_group_name = azurerm_resource_group.example.name
-  location            = azurerm_resource_group.example.location
-  firewall_state      = "Enabled"
-  firewall_allow_azure_ips = "Enabled"
-}
+    secret_permissions = [
+      "Get",
+      "Delete"
+    ]
 
-# Create an Azure Data Factory
-resource "azurerm_data_factory" "example" {
-  name                = "exampledatafactory"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-
-  identity {
-    type = "SystemAssigned"
+    storage_permissions = [
+      "Get",
+      "List",
+      "Set",
+      "SetSAS",
+      "GetSAS",
+      "DeleteSAS",
+      "Update",
+      "RegenerateKey"
+    ]
   }
 }
 
-# Create an Azure Databricks Workspace
-resource "azurerm_databricks_workspace" "example" {
-  name                = "exampledatabricks"
-  resource_group_name = azurerm_resource_group.example.name
-  location            = azurerm_resource_group.example.location
-  sku                 = "standard"
-  public_network_access_enabled = false
-}
-
-# Create a subnet within the existing VNet
-resource "azurerm_subnet" "example" {
-  name                 = "examplesubnet"
-  resource_group_name  = azurerm_resource_group.example.name
-  virtual_network_name = "existingVNetName" # replace with your VNet name
-  address_prefixes     = ["10.0.1.0/24"]
+resource "azurerm_key_vault_managed_storage_account" "uma_msa" {
+  name                         = "umamsanbtestdeploy001"
+  key_vault_id                 = azurerm_key_vault.uma_kv.id
+  storage_account_id           = azurerm_storage_account.uma_sa.id
+  storage_account_key          = "key1"
+  regenerate_key_automatically = true
+  regeneration_period          = "P1M"
 }
